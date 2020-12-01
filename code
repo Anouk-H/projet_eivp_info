@@ -1,0 +1,119 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import csv
+import pandas as pd
+from datetime import datetime, timedelta
+
+
+mydateparser=lambda x: pd.datetime.strptime(x, "%Y-%m-%d %H:%M:%S+%f:00")
+fichi=pd.read_csv(r"C:\Users\anouk\Desktop\EIVP\Cours\Info\EIVP_KM.csv", sep=";", parse_dates=['sent_at'],date_parser=mydateparser)
+
+"""def fusion(l1,l2):
+    if l1==[]:
+        return l2
+    elif l2==[]:
+        return l1
+    elif l1[0]<l2[0]:
+        return [l1[0]]+fusion(l1[1:],l2)
+    else:
+        return [l2[0]]+fusion(l1,l2[1:])
+
+
+def tri_fusion(liste):
+    if len(liste)<=1:
+        return liste
+    else:
+        n=len(liste)
+        L1=liste[:n//2]
+        L2=liste[n//2:]
+        return fusion(tri_fusion(L1),tri_fusion(L2))"""
+        
+def tri_rapide(L):
+    if L==[]:
+        return L
+    L_g=[]
+    L_d=[]
+    for i in range(1,len(L)):
+        if L[i]<=L[0]:
+            L_g.append(L[i])
+        else:
+            L_d.append(L[i])
+    return tri_rapide(L_g)+[L[0]]+tri_rapide(L_d)
+
+
+def locali_dates(doc,heure): #renvoie la ligne de la date "la plus proche" dans le doc de celle qu'on a rentré dans la fonction, on a besoin de la même écriture de l'heure
+    tri_rapide(doc['sent_at'])    #tri_fusion
+    a=0
+    b=doc.shape[0]  #car c'est le nombre de lignes
+    c=doc.shape[0]//2
+    d=timedelta(minutes=1)         #si on sait qu'on rentre une heure du tableau on peut mettre un temps plus court, c'était pour être sûre que la boucle s'arrêterait toujours
+    if heure<=doc['sent_at'][0]:
+        return 0
+    elif heure>=doc['sent_at'][doc.shape[0]-1]:
+        return doc.shape[0]-1
+    else:
+        while abs(heure-doc['sent_at'][c])>d:    #problème, en fonction de d on aura pas forcément la date la plus proche mais c'est pour être sûr que la boucle s'arrêtera pour toutes/un max de dates
+            if heure<=doc['sent_at'][c]:
+                b=c
+                c=c//2
+            else:
+                a=c
+                c=(a+b)//2
+        return c
+
+
+def min_max(doc,nom):    #nom=le nom de la colonne dont veut le min/max
+    min=doc[nom][0]
+    max=doc[nom][0]
+    i=0                  #indice du min
+    I=0                  #indice du max
+    for k in range(doc.shape[0]):
+        if doc[nom][k]<min:
+            min=doc[nom][k]
+            i=k
+        elif doc[nom][k]>max:
+            max=doc[nom][k]
+            I=k
+    return mon,i,max,I
+
+
+def mediane(doc,nom):
+    Doc=tri_rapide(doc[nom])           #tri_fusion #problème, garde ce tri "pour toujours"?
+    if doc.shape[0]%2==0:
+        a=doc.shape[0]//2+1
+        return Doc[a],a
+    else:
+        b=(doc.shape[0]+1)//2
+        return Doc[b],b
+
+def moyenne(doc,nom):
+    Doc=doc[nom]
+    S=0
+    l=doc.shape[0]
+    for k in range(l):
+        S+= Doc[k]                   #marche que si y a des nombres dans la colonnes
+    return S/l
+
+def Vari_Type(doc,nom):
+    Doc=doc[nom]
+    V=0
+    l=doc.shape[0]
+    moy=moyenne(doc,nom)
+    for k in range(l):
+        V+=(Doc[k]-moy)**2
+    return V/l, np.sqrt(V/l)
+
+
+def Graphe(doc, nom, start=fichi['sent_at'][0], end=fichi['sent_at'][fichi.shape[0]-1]): #nom correspond au nom de la colonne, ne marque que pour le fichier fichi
+    Y=[doc['sent_at'][locali_dates(doc,start):locali_dates(doc,end)+1]]   #ça marche parce qu'on connait le nom de la colonne avec les dates
+    X=[doc[nom][k] for k in range(doc.shape[0])]            #dans le range c'est le nombre de lignes
+    med=mediane(doc,nom)[0]
+    moy=moyenne(doc,nom)
+    plt.close()
+    plt.plot(X,Y)
+    plt.plot(min_max(doc,nom)[0],min_max(doc,nom)[1], color='black', marker=(5,1))
+    plt.plot(min_max(doc,nom)[2],min_max(doc,nom)[3], color='black', marker=(5,1))
+    plt.plot([med,med],[0,doc['sent_at'][doc.shape[0]-1]], color='green')  #trace une ligne horizontale pour la médiane
+    plt.plot([moy,moy],[0,doc['sent_at'][doc.shape[0]-1]], color='magenta')  #trace une ligne horizontale pour la moyenne
+    pyplot.title('Evolution de ', nom, 'en octobre 2019')
+    plt.show()
